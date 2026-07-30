@@ -404,3 +404,84 @@ th { font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color:
 @media (max-width: 640px) {
   .stack-form .row2 { grid-template-columns: 1fr; }
 }
+
+.countdown {
+  font-weight: 700;
+  color: var(--amber-deep);
+  font-size: 1.05rem;
+}
+.pay-modal[hidden] { display: none !important; }
+.pay-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  animation: rise .35s ease both;
+}
+.pay-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(11, 31, 28, 0.55);
+  backdrop-filter: blur(4px);
+}
+.pay-modal-card {
+  position: relative;
+  width: min(520px, 100%);
+  background: #fff;
+  border-radius: 18px;
+  padding: 1.5rem 1.4rem 1.3rem;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  max-height: 90vh;
+  overflow: auto;
+}
+.pay-modal-card.fail { border-color: #fecdca; }
+.pay-modal-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-bottom: .7rem;
+}
+.pay-modal-icon.ok { background: #ecfdf3; color: var(--ok); }
+.pay-modal-icon.fail { background: #fef3f2; color: var(--danger); }
+.pay-modal-card h3 {
+  font-family: var(--display);
+  margin: 0 0 .35rem;
+  font-size: 1.55rem;
+}
+.pay-detail {
+  margin: 1rem 0;
+  display: grid;
+  gap: .65rem;
+}
+.pay-detail > div {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: .5rem;
+  align-items: start;
+  padding-bottom: .55rem;
+  border-bottom: 1px solid var(--line);
+}
+.pay-detail dt {
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: rgba(11,31,28,.55);
+  font-weight: 700;
+}
+.pay-detail dd { margin: 0; word-break: break-word; }
+.pay-modal-actions {
+  display: flex;
+  gap: .6rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+@media (max-width: 520px) {
+  .pay-detail > div { grid-template-columns: 1fr; }
+}

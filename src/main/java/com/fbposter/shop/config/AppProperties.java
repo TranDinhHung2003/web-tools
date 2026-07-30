@@ -10,9 +10,10 @@ public class AppProperties {
     private String baseUrl = "http://localhost:8080";
     private String adminEmail = "admin@local.test";
     private String adminPassword = "Admin@123456";
-    private String mailFrom = "noreply@fbposter.local";
+    private String mailFrom = "OWNSTYLE Hub <noreply@fbposter.local>";
+    private String resendApiKey = "";
     private int otpExpireMinutes = 10;
-    private int orderExpireMinutes = 15;
+    private int orderExpireMinutes = 10;
     private Sepay sepay = new Sepay();
 
     public static class Sepay {
@@ -44,6 +45,8 @@ public class AppProperties {
     public void setAdminPassword(String adminPassword) { this.adminPassword = adminPassword; }
     public String getMailFrom() { return mailFrom; }
     public void setMailFrom(String mailFrom) { this.mailFrom = mailFrom; }
+    public String getResendApiKey() { return resendApiKey; }
+    public void setResendApiKey(String resendApiKey) { this.resendApiKey = resendApiKey; }
     public int getOtpExpireMinutes() { return otpExpireMinutes; }
     public void setOtpExpireMinutes(int otpExpireMinutes) { this.otpExpireMinutes = otpExpireMinutes; }
     public int getOrderExpireMinutes() { return orderExpireMinutes; }

@@ -5,7 +5,8 @@
 <div th:replace="~{fragments :: topbar}"></div>
 <section class="section">
   <h2>Thanh toán chuyển khoản</h2>
-  <p class="sub">Quét QR MB Bank hoặc chuyển khoản đúng số tiền + nội dung. Hệ thống tự tạo token theo thời hạn gói bạn chọn.</p>
+  <p class="sub">Quét QR động VietQR / SePay. Hệ thống tự kiểm tra giao dịch — thành công sẽ hiện popup đầy đủ thông tin. Mã có hiệu lực
+    <strong th:text="${expireMinutes}">10</strong> phút.</p>
 
   <div class="checkout">
     <div class="panel">
@@ -23,41 +24,83 @@
       <p style="margin-top:1rem"><strong>Ngân hàng:</strong> MB Bank (<span th:text="${bank.bankCode}">MB</span>)</p>
       <p><strong>Số TK:</strong> <span class="mono" th:text="${bank.accountNumber}">0910108069999</span></p>
       <p><strong>Chủ TK:</strong> <span th:text="${bank.accountName}">MB BANK</span></p>
-      <p class="muted">Đơn hết hạn lúc: <span th:text="${order.expiresAt}">...</span></p>
+      <p class="muted">Đơn hết hạn lúc: <span id="expiresAtLabel" th:text="${order.expiresAt}">...</span></p>
+      <p id="countdownLine" class="countdown">Thời gian còn lại: <span id="countdown">--:--</span></p>
       <p id="statusLine" class="muted">Đang chờ thanh toán…</p>
-
-      <div id="tokenBox" class="success-panel" style="display:none">
-        <div class="success-title">✓ Thanh toán thành công</div>
-        <p class="success-sub">Đã tự tạo token đúng thời hạn gói bạn mua:
-          <strong id="durVal" th:text="${order.plan.durationLabel()}"></strong>
-        </p>
-        <p><strong>Mã token của bạn:</strong></p>
-        <div class="copy-row">
-          <code class="mono token-big" id="tokenVal">—</code>
-          <button class="btn btn-sm btn-primary" type="button" id="copyTokenBtn"
-                  onclick="copyToken()">Copy token</button>
-        </div>
-        <p id="copyHint" class="muted" style="margin-top:.4rem;display:none">Đã copy vào clipboard.</p>
-        <p class="success-note">Token của bạn sẽ được lưu trong đơn hàng. Bạn có thể xem lại bất cứ lúc nào tại
-          <a th:href="@{/account/orders}">Lịch sử mua hàng</a>.
-        </p>
-      </div>
     </div>
     <div class="panel" style="text-align:center" id="qrPanel">
-      <img class="qr" th:src="${qrUrl}" alt="VietQR thanh toán"/>
+      <img class="qr" th:src="${qrUrl}" alt="VietQR thanh toán" id="qrImg"/>
       <p class="muted">Quét VietQR bằng app ngân hàng</p>
     </div>
   </div>
 </section>
+
+<!-- Success modal -->
+<div id="successModal" class="pay-modal" hidden>
+  <div class="pay-modal-backdrop"></div>
+  <div class="pay-modal-card" role="dialog" aria-modal="true" aria-labelledby="successTitle">
+    <div class="pay-modal-icon ok">✓</div>
+    <h3 id="successTitle">Thanh toán thành công</h3>
+    <p class="muted" style="margin-top:0">SePay đã xác nhận giao dịch. Token đã được cấp.</p>
+    <dl class="pay-detail">
+      <div><dt>Mã token</dt><dd><code class="mono token-big" id="mToken">—</code>
+        <button class="btn btn-sm btn-primary" type="button" onclick="copyModalToken()">Copy</button></dd></div>
+      <div><dt>Gói</dt><dd id="mPlan">—</dd></div>
+      <div><dt>Thời hạn</dt><dd id="mDur">—</dd></div>
+      <div><dt>Số tiền</dt><dd id="mAmount">—</dd></div>
+      <div><dt>Mã CK</dt><dd class="mono" id="mPayCode">—</dd></div>
+      <div><dt>SePay txn</dt><dd class="mono" id="mTxn">—</dd></div>
+      <div><dt>Ngày giờ thanh toán</dt><dd id="mPaidAt">—</dd></div>
+      <div><dt>Email</dt><dd id="mEmail">—</dd></div>
+    </dl>
+    <p id="copyHint" class="muted" style="display:none">Đã copy token.</p>
+    <div class="pay-modal-actions">
+      <a class="btn btn-primary" th:href="@{/account/orders}">Xem lịch sử mua hàng</a>
+      <button class="btn btn-ghost" type="button" onclick="closeModal('successModal')">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<!-- Fail / expired modal -->
+<div id="failModal" class="pay-modal" hidden>
+  <div class="pay-modal-backdrop"></div>
+  <div class="pay-modal-card fail" role="dialog" aria-modal="true">
+    <div class="pay-modal-icon fail">!</div>
+    <h3>Thanh toán thất bại</h3>
+    <p id="failMsg">Hết thời gian chờ 10 phút mà chưa có giao dịch SePay. Vui lòng tạo đơn mới.</p>
+    <div class="pay-modal-actions">
+      <a class="btn btn-primary" th:href="@{/}">Chọn gói lại</a>
+      <button class="btn btn-ghost" type="button" onclick="closeModal('failModal')">Đóng</button>
+    </div>
+  </div>
+</div>
+
 <div th:replace="~{fragments :: footer}"></div>
 <script th:inline="javascript">
   const statusUrl = /*[[@{/checkout/{id}/status(id=${order.id})}]]*/ '';
   const alreadyPaid = /*[[${order.status.name() == 'PAID'}]]*/ false;
+  const alreadyExpired = /*[[${order.status.name() == 'EXPIRED'}]]*/ false;
   const existingToken = /*[[${order.issuedToken != null ? order.issuedToken : ''}]]*/ '';
   const existingDur = /*[[${order.plan.durationLabel()}]]*/ '';
+  const existingPlan = /*[[${order.plan.name}]]*/ '';
+  const existingPayCode = /*[[${order.paymentCode}]]*/ '';
+  const existingAmount = /*[[${order.amountVnd}]]*/ 0;
+  const existingEmail = /*[[${order.buyerEmail != null ? order.buyerEmail : ''}]]*/ '';
+  const existingPaidAt = /*[[${order.paidAt != null ? order.paidAt.toString() : ''}]]*/ '';
+  const existingTxn = /*[[${order.sepayTransactionId != null ? order.sepayTransactionId : ''}]]*/ '';
+  const expiresAtMs = /*[[${order.expiresAt != null ? order.expiresAt.toEpochMilli() : 0L}]]*/ 0;
+  const expireMinutes = /*[[${expireMinutes}]]*/ 10;
 
-  function copyToken() {
-    const t = document.getElementById('tokenVal').innerText.trim();
+  let stopped = false;
+  let pollTimer = null;
+  let countdownTimer = null;
+
+  function fmtMoney(n) {
+    try { return Number(n).toLocaleString('vi-VN') + ' VND'; } catch (e) { return n + ' VND'; }
+  }
+
+  function copyModalToken() {
+    const t = document.getElementById('mToken').innerText.trim();
     if (!t || t === '—') return;
     navigator.clipboard.writeText(t).then(() => {
       const h = document.getElementById('copyHint');
@@ -66,32 +109,91 @@
     });
   }
 
-  function showSuccess(token, duration) {
+  function closeModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.hidden = true;
+  }
+
+  function showSuccess(data) {
+    stopped = true;
+    clearTimeout(pollTimer);
+    clearInterval(countdownTimer);
     document.getElementById('statusLine').textContent = 'Trạng thái: Thanh toán thành công';
-    document.getElementById('tokenBox').style.display = 'block';
-    document.getElementById('tokenVal').textContent = token || '—';
-    if (duration) document.getElementById('durVal').textContent = duration;
+    document.getElementById('countdownLine').textContent = 'Đã hoàn tất';
     const qr = document.getElementById('qrPanel');
-    if (qr) qr.style.opacity = '0.45';
+    if (qr) qr.style.opacity = '0.4';
+
+    document.getElementById('mToken').textContent = data.token || existingToken || '—';
+    document.getElementById('mPlan').textContent = data.planName || existingPlan || '—';
+    document.getElementById('mDur').textContent = data.durationLabel || existingDur || '—';
+    document.getElementById('mAmount').textContent = fmtMoney(data.transferAmount || data.amountVnd || existingAmount);
+    document.getElementById('mPayCode').textContent = data.paymentCode || existingPayCode || '—';
+    document.getElementById('mTxn').textContent = data.sepayTxnId || existingTxn || '—';
+    document.getElementById('mPaidAt').textContent = data.paidAt || existingPaidAt || new Date().toLocaleString('vi-VN');
+    document.getElementById('mEmail').textContent = data.buyerEmail || existingEmail || '—';
+    document.getElementById('successModal').hidden = false;
+  }
+
+  function showFail(msg) {
+    stopped = true;
+    clearTimeout(pollTimer);
+    clearInterval(countdownTimer);
+    document.getElementById('statusLine').textContent = 'Trạng thái: Thất bại / hết hạn';
+    document.getElementById('countdownLine').textContent = 'Hết thời gian chờ';
+    const qr = document.getElementById('qrPanel');
+    if (qr) qr.style.opacity = '0.35';
+    if (msg) document.getElementById('failMsg').textContent = msg;
+    document.getElementById('failModal').hidden = false;
+  }
+
+  function tickCountdown() {
+    if (!expiresAtMs) return;
+    const left = Math.max(0, expiresAtMs - Date.now());
+    const totalSec = Math.floor(left / 1000);
+    const m = String(Math.floor(totalSec / 60)).padStart(2, '0');
+    const s = String(totalSec % 60).padStart(2, '0');
+    const el = document.getElementById('countdown');
+    if (el) el.textContent = m + ':' + s;
+    if (left <= 0 && !stopped) {
+      showFail('Hết ' + expireMinutes + ' phút chờ mà chưa có dấu hiệu giao dịch SePay. Đơn đã thất bại — vui lòng tạo đơn mới.');
+    }
   }
 
   async function poll() {
+    if (stopped) return;
     try {
       const res = await fetch(statusUrl, {headers: {'Accept':'application/json'}});
       const data = await res.json();
       if (data.paid) {
-        showSuccess(data.token, data.durationLabel || existingDur);
+        showSuccess(data);
+        return;
+      }
+      if (data.expired) {
+        showFail('Hết ' + expireMinutes + ' phút chờ mà chưa có dấu hiệu giao dịch SePay. Đơn đã thất bại — vui lòng tạo đơn mới.');
         return;
       }
       document.getElementById('statusLine').textContent =
-        'Trạng thái: ' + data.status + ' — đang chờ SePay…';
+        'Trạng thái: ' + data.status + ' — đang tự kiểm tra SePay…';
     } catch (e) {}
-    setTimeout(poll, 3000);
+    pollTimer = setTimeout(poll, 3000);
   }
 
   if (alreadyPaid && existingToken) {
-    showSuccess(existingToken, existingDur);
+    showSuccess({
+      token: existingToken,
+      durationLabel: existingDur,
+      planName: existingPlan,
+      paymentCode: existingPayCode,
+      amountVnd: existingAmount,
+      buyerEmail: existingEmail,
+      paidAt: existingPaidAt,
+      sepayTxnId: existingTxn
+    });
+  } else if (alreadyExpired) {
+    showFail('Đơn này đã hết hạn ' + expireMinutes + ' phút. Vui lòng tạo đơn mới.');
   } else {
+    tickCountdown();
+    countdownTimer = setInterval(tickCountdown, 1000);
     poll();
   }
 </script>

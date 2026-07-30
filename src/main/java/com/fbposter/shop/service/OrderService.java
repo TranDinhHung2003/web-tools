@@ -79,8 +79,21 @@ public class OrderService {
     order.setStatus(OrderStatus.PENDING);
     order.setBuyerEmail(buyer.getEmail());
     order.setBuyerName(buyer.getFullName());
-    order.setExpiresAt(Instant.now().plus(props.getOrderExpireMinutes(), ChronoUnit.MINUTES));
+    int expireMinutes = Math.max(1, props.getOrderExpireMinutes());
+    order.setExpiresAt(Instant.now().plus(expireMinutes, ChronoUnit.MINUTES));
     return orderRepository.save(order);
+  }
+
+  /** Đánh dấu hết hạn nếu quá thời gian chờ (mặc định 10 phút). */
+  @Transactional
+  public ShopOrder refreshExpiry(ShopOrder order) {
+    if (order.getStatus() == OrderStatus.PENDING
+        && order.getExpiresAt() != null
+        && order.getExpiresAt().isBefore(Instant.now())) {
+      order.setStatus(OrderStatus.EXPIRED);
+      return orderRepository.save(order);
+    }
+    return order;
   }
 
   public String buildQrUrl(ShopOrder order) {

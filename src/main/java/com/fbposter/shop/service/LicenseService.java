@@ -165,12 +165,16 @@ public class LicenseService {
     repo.findByToken(token.trim().toUpperCase(Locale.ROOT))
         .ifPresent(
             lic -> {
-              if (lic.getMachineId() != null) {
-                lic.setBlockedMachineId(lic.getMachineId());
-              }
-              lic.setRevoked(true);
-              repo.save(lic);
+              // Thu hồi = xoá hẳn khỏi DB để tránh tràn bộ nhớ / danh sách
+              lic.setOrder(null);
+              repo.delete(lic);
             });
+  }
+
+  /** Xoá mọi token đã từng soft-revoke (dữ liệu cũ). */
+  @Transactional
+  public int purgeRevoked() {
+    return repo.deleteAllRevoked();
   }
 
   @Transactional

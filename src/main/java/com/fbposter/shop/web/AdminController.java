@@ -11,6 +11,7 @@ import com.fbposter.shop.repository.SaleLogRepository;
 import com.fbposter.shop.repository.ShopOrderRepository;
 import com.fbposter.shop.repository.UserAccountRepository;
 import com.fbposter.shop.service.LicenseService;
+import com.fbposter.shop.service.SettingsService;
 import java.time.Instant;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
@@ -34,6 +35,7 @@ public class AdminController {
   private final LicenseService licenseService;
   private final PasswordEncoder passwordEncoder;
   private final AppProperties props;
+  private final SettingsService settingsService;
 
   public AdminController(
       SaleLogRepository saleLogRepository,
@@ -43,7 +45,8 @@ public class AdminController {
       LicenseTokenRepository tokenRepository,
       LicenseService licenseService,
       PasswordEncoder passwordEncoder,
-      AppProperties props) {
+      AppProperties props,
+      SettingsService settingsService) {
     this.saleLogRepository = saleLogRepository;
     this.orderRepository = orderRepository;
     this.planRepository = planRepository;
@@ -52,6 +55,7 @@ public class AdminController {
     this.licenseService = licenseService;
     this.passwordEncoder = passwordEncoder;
     this.props = props;
+    this.settingsService = settingsService;
   }
 
   @GetMapping({"", "/"})
@@ -182,7 +186,9 @@ public class AdminController {
 
   @GetMapping("/tokens")
   public String tokens(Model model) {
-    model.addAttribute("tokens", tokenRepository.findAllByOrderByCreatedAtDesc());
+    // Dọn token đã soft-revoke từ dữ liệu cũ, rồi chỉ hiện token còn dùng
+    licenseService.purgeRevoked();
+    model.addAttribute("tokens", tokenRepository.findByRevokedFalseOrderByCreatedAtDesc());
     model.addAttribute("plans", planRepository.findAll());
     model.addAttribute("users", userRepository.findAll());
     return "admin/tokens";
@@ -204,7 +210,7 @@ public class AdminController {
   @PostMapping("/tokens/{token}/revoke")
   public String revoke(@PathVariable String token, RedirectAttributes ra) {
     licenseService.revoke(token);
-    ra.addFlashAttribute("success", "Đã thu hồi token");
+    ra.addFlashAttribute("success", "Đã thu hồi và xoá token khỏi danh sách");
     return "redirect:/admin/tokens";
   }
 
@@ -218,6 +224,68 @@ public class AdminController {
   @GetMapping("/settings")
   public String settings(Model model) {
     model.addAttribute("props", props);
+    model.addAttribute("settings", settingsService.asMap());
+    model.addAttribute("extras", settingsService.extras());
+    model.addAttribute("resendMasked", settingsService.maskedSecret(SettingsService.KEY_RESEND_API_KEY));
+    model.addAttribute("sepayKeyMasked", settingsService.maskedSecret(SettingsService.KEY_SEPAY_API_KEY));
     return "admin/settings";
+  }
+
+  @PostMapping("/settings")
+  public String saveSettings(
+      @RequestParam String appName,
+      @RequestParam String baseUrl,
+      @RequestParam String adminEmail,
+      @RequestParam String mailFrom,
+      @RequestParam(required = false) String resendApiKey,
+      @RequestParam(defaultValue = "10") int otpExpireMinutes,
+      @RequestParam(defaultValue = "10") int orderExpireMinutes,
+      @RequestParam(required = false) String sepayApiKey,
+      @RequestParam String bankCode,
+      @RequestParam String accountNumber,
+      @RequestParam String accountName,
+      @RequestParam String paymentPrefix,
+      RedirectAttributes ra) {
+    settingsService.saveKnown(
+        appName,
+        baseUrl,
+        adminEmail,
+        mailFrom,
+        resendApiKey,
+        otpExpireMinutes,
+        orderExpireMinutes,
+        sepayApiKey,
+        bankCode,
+        accountNumber,
+        accountName,
+        paymentPrefix);
+    ra.addFlashAttribute("success", "Đã lưu cấu hình (áp dụng ngay, không cần restart)");
+    return "redirect:/admin/settings";
+  }
+
+  @PostMapping("/settings/extra")
+  public String addExtra(
+      @RequestParam String key,
+      @RequestParam(required = false) String value,
+      @RequestParam(defaultValue = "false") boolean secret,
+      RedirectAttributes ra) {
+    try {
+      settingsService.upsert(key, value, secret);
+      ra.addFlashAttribute("success", "Đã thêm / cập nhật: " + key.trim());
+    } catch (IllegalArgumentException ex) {
+      ra.addFlashAttribute("error", ex.getMessage());
+    }
+    return "redirect:/admin/settings";
+  }
+
+  @PostMapping("/settings/delete")
+  public String deleteSetting(@RequestParam String key, RedirectAttributes ra) {
+    try {
+      settingsService.delete(key);
+      ra.addFlashAttribute("success", "Đã xoá: " + key);
+    } catch (IllegalArgumentException ex) {
+      ra.addFlashAttribute("error", ex.getMessage());
+    }
+    return "redirect:/admin/settings";
   }
 }

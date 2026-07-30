@@ -5,20 +5,154 @@
 <div th:replace="~{fragments :: topbar}"></div>
 <div class="admin-layout">
   <div th:replace="~{fragments :: admin-nav('settings')}"></div>
-  <div class="panel">
-    <h2 style="font-family:var(--display);margin-top:0">Cấu hình (env)</h2>
-    <p class="muted">Chỉnh qua biến môi trường / application.yml rồi restart.</p>
-    <table>
-      <tr><th>App</th><td th:text="${props.name}"></td></tr>
-      <tr><th>Base URL</th><td class="mono" th:text="${props.baseUrl}"></td></tr>
-      <tr><th>Admin email</th><td class="mono" th:text="${props.adminEmail}"></td></tr>
-      <tr><th>Ngân hàng</th><td>MB Bank (<span th:text="${props.sepay.bankCode}"></span>)</td></tr>
-      <tr><th>STK nhận</th><td class="mono" th:text="${props.sepay.accountNumber}"></td></tr>
-      <tr><th>Chủ TK</th><td th:text="${props.sepay.accountName}"></td></tr>
-      <tr><th>Prefix mã CK</th><td class="mono" th:text="${props.sepay.paymentPrefix}"></td></tr>
-      <tr><th>Webhook</th><td class="mono" th:text="${props.baseUrl + '/api/sepay/webhook'}"></td></tr>
-      <tr><th>License API</th><td class="mono" th:text="${props.baseUrl + '/api/v1/activate|verify'}"></td></tr>
-    </table>
+  <div>
+    <div th:if="${success}" class="alert alert-ok" th:text="${success}"></div>
+    <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+    <div class="panel" style="margin-bottom:1rem">
+      <h2 style="font-family:var(--display);margin-top:0">Cấu hình</h2>
+      <p class="muted">Nhập / xoá / lưu trực tiếp — áp dụng ngay, không cần restart.</p>
+
+      <form th:action="@{/admin/settings}" method="post" class="stack-form">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+        <h3 style="margin:.4rem 0 0">Ứng dụng</h3>
+        <div class="row2">
+          <div class="field">
+            <label>App</label>
+            <input name="appName" required th:value="${props.name}"/>
+          </div>
+          <div class="field">
+            <label>Base URL</label>
+            <input name="baseUrl" required class="mono" th:value="${props.baseUrl}"/>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Admin email</label>
+            <input name="adminEmail" required class="mono" th:value="${props.adminEmail}"/>
+          </div>
+          <div class="field">
+            <label>Thời gian chờ đơn (phút)</label>
+            <input name="orderExpireMinutes" type="number" min="1" max="120" required th:value="${props.orderExpireMinutes}"/>
+          </div>
+        </div>
+
+        <h3 style="margin:.6rem 0 0">Resend (OTP email)</h3>
+        <div class="row2">
+          <div class="field">
+            <label>Resend API Key (OTP email)</label>
+            <input name="resendApiKey" type="password" autocomplete="new-password"
+                   placeholder="re_xxxxxxxx (để trống nếu không đổi)"/>
+            <p class="muted" style="margin:.35rem 0 0;font-size:.85rem"
+               th:if="${resendMasked != null and !#strings.isEmpty(resendMasked)}">
+              Đang có key: <span class="mono" th:text="${resendMasked}"></span>
+            </p>
+          </div>
+          <div class="field">
+            <label>Email From (OTP)</label>
+            <input name="mailFrom" required
+                   placeholder="OWNSTYLE Hub &lt;noreply@yourdomain.com&gt;"
+                   th:value="${props.mailFrom}"/>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>OTP hết hạn (phút)</label>
+            <input name="otpExpireMinutes" type="number" min="1" max="60" required th:value="${props.otpExpireMinutes}"/>
+          </div>
+          <div class="field">
+            <label>Webhook SePay (chỉ xem)</label>
+            <input class="mono" readonly th:value="${props.baseUrl + '/api/sepay/webhook'}"/>
+          </div>
+        </div>
+
+        <h3 style="margin:.6rem 0 0">SePay / Ngân hàng</h3>
+        <div class="row2">
+          <div class="field">
+            <label>SePay API Key (webhook)</label>
+            <input name="sepayApiKey" type="password" autocomplete="new-password"
+                   placeholder="Apikey… (để trống nếu không đổi)"/>
+            <p class="muted" style="margin:.35rem 0 0;font-size:.85rem"
+               th:if="${sepayKeyMasked != null and !#strings.isEmpty(sepayKeyMasked)}">
+              Đang có key: <span class="mono" th:text="${sepayKeyMasked}"></span>
+            </p>
+          </div>
+          <div class="field">
+            <label>Prefix mã CK</label>
+            <input name="paymentPrefix" required class="mono" th:value="${props.sepay.paymentPrefix}"/>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Ngân hàng (mã VietQR)</label>
+            <input name="bankCode" required th:value="${props.sepay.bankCode}" placeholder="MB hoặc 970422"/>
+          </div>
+          <div class="field">
+            <label>STK nhận</label>
+            <input name="accountNumber" required class="mono" th:value="${props.sepay.accountNumber}"/>
+          </div>
+        </div>
+        <div class="field">
+          <label>Chủ TK</label>
+          <input name="accountName" required th:value="${props.sepay.accountName}"/>
+        </div>
+
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.4rem">
+          <button class="btn btn-primary" type="submit">Lưu cấu hình</button>
+          <span class="muted" style="align-self:center;font-size:.9rem">License API:
+            <span class="mono" th:text="${props.baseUrl + '/api/v1/activate|verify'}"></span>
+          </span>
+        </div>
+      </form>
+
+      <form th:action="@{/admin/settings/delete}" method="post" style="margin-top:.8rem;display:flex;gap:.5rem;flex-wrap:wrap"
+            onsubmit="return confirm('Xoá Resend API Key?');">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <input type="hidden" name="key" value="app.resendApiKey"/>
+        <button class="btn btn-sm btn-danger" type="submit">Xoá Resend API Key</button>
+      </form>
+      <form th:action="@{/admin/settings/delete}" method="post" style="margin-top:.4rem;display:inline"
+            onsubmit="return confirm('Xoá SePay API Key?');">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <input type="hidden" name="key" value="app.sepay.apiKey"/>
+        <button class="btn btn-sm btn-ghost" type="submit">Xoá SePay API Key</button>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h3 style="margin-top:0">Thêm khoá tuỳ chỉnh</h3>
+      <p class="muted">Thêm / cập nhật / xoá key-value nhanh (lưu vào DB).</p>
+      <form th:action="@{/admin/settings/extra}" method="post" class="stack-form">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <div class="row2">
+          <div class="field"><label>Key</label><input name="key" required placeholder="custom.myKey"/></div>
+          <div class="field"><label>Value</label><input name="value" placeholder="giá trị"/></div>
+        </div>
+        <label style="display:flex;gap:.4rem;align-items:center;font-size:.92rem">
+          <input type="checkbox" name="secret" value="true"/> Secret (che khi hiển thị)
+        </label>
+        <button class="btn btn-dark" type="submit">Thêm / cập nhật</button>
+      </form>
+
+      <table style="margin-top:1rem" th:if="${extras != null and !extras.isEmpty()}">
+        <thead><tr><th>Key</th><th>Value</th><th></th></tr></thead>
+        <tbody>
+        <tr th:each="e : ${extras}">
+          <td class="mono" th:text="${e.settingKey}"></td>
+          <td class="mono" th:text="${e.secret ? '••••••••' : e.settingValue}"></td>
+          <td>
+            <form th:action="@{/admin/settings/delete}" method="post" style="display:inline"
+                  onsubmit="return confirm('Xoá khoá này?');">
+              <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+              <input type="hidden" name="key" th:value="${e.settingKey}"/>
+              <button class="btn btn-sm btn-danger" type="submit">Xoá</button>
+            </form>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 <div th:replace="~{fragments :: footer}"></div>

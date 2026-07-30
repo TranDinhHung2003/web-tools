@@ -64,6 +64,7 @@ app:
     account-number: ${SEPAY_ACCOUNT:0910108069999}
     account-name: ${SEPAY_ACCOUNT_NAME:MB BANK}
     payment-prefix: FBPAY
-  mail-from: ${MAIL_FROM:noreply@fbposter.local}
+  mail-from: "${MAIL_FROM:OWNSTYLE Hub <noreply@fbposter.local>}"
+  resend-api-key: ${RESEND_API_KEY:}
   otp-expire-minutes: 10
-  order-expire-minutes: 15
+  order-expire-minutes: 10

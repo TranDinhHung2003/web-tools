@@ -33,11 +33,11 @@
     </div>
     <div class="panel table-wrap">
       <h3 style="margin-top:0">Quản lý token — Thu hồi / Cho đổi máy</h3>
-      <p class="muted">Thu hồi: khoá token. Cho đổi máy: gỡ máy cũ để khách kích hoạt máy mới.</p>
+      <p class="muted">Thu hồi: xoá hẳn token khỏi danh sách (tránh tràn bộ nhớ). Cho đổi máy: gỡ máy cũ để khách kích hoạt máy mới.</p>
       <table>
         <thead>
         <tr>
-          <th>Token</th><th>Owner</th><th>Thời hạn gói</th><th>Máy</th><th>IP</th><th>Revoked</th><th>Thao tác</th>
+          <th>Token</th><th>Owner</th><th>Thời hạn gói</th><th>Máy</th><th>IP</th><th>Thao tác</th>
         </tr>
         </thead>
         <tbody>
@@ -51,7 +51,6 @@
           </td>
           <td class="mono" th:text="${t.machineId != null ? t.machineId : 'Chưa gắn'}"></td>
           <td class="mono" th:text="${t.lastIp}"></td>
-          <td th:text="${t.revoked ? 'Đã thu hồi' : 'Đang dùng'}"></td>
           <td>
             <form th:action="@{/admin/tokens/{token}/reset(token=${t.token})}" method="post" style="display:inline"
                   onsubmit="return confirm('Cho phép đổi máy? Máy cũ sẽ bị chặn, khách kích hoạt máy mới.');">
@@ -59,9 +58,9 @@
               <button class="btn btn-sm btn-ghost" type="submit">Cho đổi máy</button>
             </form>
             <form th:action="@{/admin/tokens/{token}/revoke(token=${t.token})}" method="post" style="display:inline"
-                  onsubmit="return confirm('Thu hồi token này? Khách sẽ không dùng được nữa.');">
+                  onsubmit="return confirm('Thu hồi và XOÁ token này? Không thể hoàn tác.');">
               <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-              <button class="btn btn-sm btn-danger" type="submit">Thu hồi</button>
+              <button class="btn btn-sm btn-danger" type="submit">Thu hồi &amp; xoá</button>
             </form>
           </td>
         </tr>
