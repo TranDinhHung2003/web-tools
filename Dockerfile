@@ -2,6 +2,8 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 COPY . .
+# Cấp quyền thực thi cho file mvnw trước khi build
+RUN chmod +x mvnw
 RUN ./mvnw clean package -DskipTests
 
 # Bước 2: Chạy ứng dụng Java với JRE 21
