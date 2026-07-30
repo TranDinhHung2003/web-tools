@@ -22,6 +22,7 @@ public class AppProperties {
         private String accountNumber = "0910108069999";
         private String accountName = "MB BANK";
         private String paymentPrefix = "FBPAY";
+        private String webhookUrl = "";
 
         public String getApiKey() { return apiKey; }
         public void setApiKey(String apiKey) { this.apiKey = apiKey; }
@@ -33,6 +34,17 @@ public class AppProperties {
         public void setAccountName(String accountName) { this.accountName = accountName; }
         public String getPaymentPrefix() { return paymentPrefix; }
         public void setPaymentPrefix(String paymentPrefix) { this.paymentPrefix = paymentPrefix; }
+        public String getWebhookUrl() { return webhookUrl; }
+        public void setWebhookUrl(String webhookUrl) { this.webhookUrl = webhookUrl; }
+
+        /** URL dán vào SePay dashboard; fallback theo base URL nếu trống. */
+        public String resolvedWebhookUrl(String baseUrl) {
+            if (webhookUrl != null && !webhookUrl.isBlank()) {
+                return webhookUrl.trim();
+            }
+            String base = baseUrl == null ? "" : baseUrl.replaceAll("/+$", "");
+            return base + "/api/sepay/webhook";
+        }
     }
 
     public String getName() { return name; }

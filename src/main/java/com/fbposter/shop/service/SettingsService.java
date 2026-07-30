@@ -26,6 +26,7 @@ public class SettingsService {
   public static final String KEY_SEPAY_ACCOUNT = "app.sepay.accountNumber";
   public static final String KEY_SEPAY_ACCOUNT_NAME = "app.sepay.accountName";
   public static final String KEY_SEPAY_PREFIX = "app.sepay.paymentPrefix";
+  public static final String KEY_SEPAY_WEBHOOK = "app.sepay.webhookUrl";
 
   public static final Set<String> KNOWN_KEYS =
       Set.of(
@@ -40,7 +41,8 @@ public class SettingsService {
           KEY_SEPAY_BANK,
           KEY_SEPAY_ACCOUNT,
           KEY_SEPAY_ACCOUNT_NAME,
-          KEY_SEPAY_PREFIX);
+          KEY_SEPAY_PREFIX,
+          KEY_SEPAY_WEBHOOK);
 
   public static final Set<String> SECRET_KEYS = Set.of(KEY_RESEND_API_KEY, KEY_SEPAY_API_KEY);
 
@@ -66,6 +68,13 @@ public class SettingsService {
     seedIfAbsent(KEY_SEPAY_ACCOUNT, props.getSepay().getAccountNumber(), false);
     seedIfAbsent(KEY_SEPAY_ACCOUNT_NAME, props.getSepay().getAccountName(), false);
     seedIfAbsent(KEY_SEPAY_PREFIX, props.getSepay().getPaymentPrefix(), false);
+    String defaultWebhook = props.getSepay().resolvedWebhookUrl(props.getBaseUrl());
+    seedIfAbsent(
+        KEY_SEPAY_WEBHOOK,
+        props.getSepay().getWebhookUrl() == null || props.getSepay().getWebhookUrl().isBlank()
+            ? defaultWebhook
+            : props.getSepay().getWebhookUrl(),
+        false);
     applyAllFromDb();
   }
 
@@ -100,7 +109,8 @@ public class SettingsService {
       String bankCode,
       String accountNumber,
       String accountName,
-      String paymentPrefix) {
+      String paymentPrefix,
+      String webhookUrl) {
     put(KEY_APP_NAME, appName, false);
     put(KEY_BASE_URL, baseUrl, false);
     put(KEY_ADMIN_EMAIL, adminEmail, false);
@@ -121,6 +131,12 @@ public class SettingsService {
     put(KEY_SEPAY_ACCOUNT, accountNumber, false);
     put(KEY_SEPAY_ACCOUNT_NAME, accountName, false);
     put(KEY_SEPAY_PREFIX, paymentPrefix, false);
+    put(
+        KEY_SEPAY_WEBHOOK,
+        webhookUrl == null || webhookUrl.isBlank()
+            ? (baseUrl == null ? "" : baseUrl.replaceAll("/+$", "")) + "/api/sepay/webhook"
+            : webhookUrl.trim(),
+        false);
     applyAllFromDb();
   }
 
@@ -204,6 +220,7 @@ public class SettingsService {
     apply(map, KEY_SEPAY_ACCOUNT, props.getSepay()::setAccountNumber);
     apply(map, KEY_SEPAY_ACCOUNT_NAME, props.getSepay()::setAccountName);
     apply(map, KEY_SEPAY_PREFIX, props.getSepay()::setPaymentPrefix);
+    apply(map, KEY_SEPAY_WEBHOOK, props.getSepay()::setWebhookUrl);
   }
 
   private static void apply(Map<String, String> map, String key, java.util.function.Consumer<String> setter) {

@@ -64,6 +64,7 @@ app:
     account-number: ${SEPAY_ACCOUNT:0910108069999}
     account-name: ${SEPAY_ACCOUNT_NAME:MB BANK}
     payment-prefix: FBPAY
+    webhook-url: ${SEPAY_WEBHOOK_URL:}
   mail-from: "${MAIL_FROM:OWNSTYLE Hub <noreply@fbposter.local>}"
   resend-api-key: ${RESEND_API_KEY:}
   otp-expire-minutes: 10

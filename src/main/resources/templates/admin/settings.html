@@ -62,8 +62,10 @@
             <input name="otpExpireMinutes" type="number" min="1" max="60" required th:value="${props.otpExpireMinutes}"/>
           </div>
           <div class="field">
-            <label>Webhook SePay (chỉ xem)</label>
-            <input class="mono" readonly th:value="${props.baseUrl + '/api/sepay/webhook'}"/>
+            <label>Webhook SePay</label>
+            <input name="webhookUrl" required class="mono"
+                   th:value="${webhookUrl}"
+                   placeholder="https://your-domain/api/sepay/webhook"/>
           </div>
         </div>
 

@@ -228,6 +228,7 @@ public class AdminController {
     model.addAttribute("extras", settingsService.extras());
     model.addAttribute("resendMasked", settingsService.maskedSecret(SettingsService.KEY_RESEND_API_KEY));
     model.addAttribute("sepayKeyMasked", settingsService.maskedSecret(SettingsService.KEY_SEPAY_API_KEY));
+    model.addAttribute("webhookUrl", props.getSepay().resolvedWebhookUrl(props.getBaseUrl()));
     return "admin/settings";
   }
 
@@ -245,6 +246,7 @@ public class AdminController {
       @RequestParam String accountNumber,
       @RequestParam String accountName,
       @RequestParam String paymentPrefix,
+      @RequestParam(required = false) String webhookUrl,
       RedirectAttributes ra) {
     settingsService.saveKnown(
         appName,
@@ -258,7 +260,8 @@ public class AdminController {
         bankCode,
         accountNumber,
         accountName,
-        paymentPrefix);
+        paymentPrefix,
+        webhookUrl);
     ra.addFlashAttribute("success", "Đã lưu cấu hình (áp dụng ngay, không cần restart)");
     return "redirect:/admin/settings";
   }
